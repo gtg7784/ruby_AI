@@ -1,2 +1,2 @@
-# azure config file
-config.json
+# azure config
+.azureml/
