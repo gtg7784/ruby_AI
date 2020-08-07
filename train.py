@@ -17,8 +17,9 @@ from transformers.optimization import AdamW, get_cosine_schedule_with_warmup
 parser = argparse.ArgumentParser(description='Ruby based on KoGPT-2')
 
 parser.add_argument('--chat', action='store_true', default=False)
-parser.add_argument('--model', type=str, default='model_chp/model_last.ckpt')
-parser.add_argument('--trian', action='store_true', default=False, help='training the model')
+parser.add_argument('--sentiment', type=str, default='0')
+parser.add_argument('--model_params', type=str, default='model_chp/model_last.ckpt')
+parser.add_argument('--train', action='store_true', default=False)
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
