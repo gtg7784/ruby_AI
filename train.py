@@ -1,10 +1,8 @@
 import argparse
 import logging
-
+import torch
 import numpy as np
 import pandas as pd
-from torch import where, ones_like, LongTensor, no_grad, argmax
-from torch.nn import CrossEntropyLoss
 from gluonnlp.data import SentencepieceTokenizer, PadSequence
 from kogpt2.pytorch_kogpt2 import get_pytorch_kogpt2_model
 from kogpt2.utils import get_tokenizer
@@ -91,7 +89,7 @@ class KoGPT2Chat(LightningModule):
     self.tok_path = get_tokenizer()
     self.neg = -1e18
     self.kogpt2, self.vocab = get_pytorch_kogpt2_model()
-    self.loss_func = CrossEntropyLoss(reduction='none')
+    self.loss_func = torch.nn.CrossEntropyLoss(reduction='none')
 
   @staticmethod
   def add_model_specific_args(parent_parser):
@@ -109,7 +107,7 @@ class KoGPT2Chat(LightningModule):
     token_ids, mask, label = batch
     out = self(token_ids)
     mask_3d = mask.unsqueeze(dim=2).repeat_interleave(repeats=out.shape[2], dim=2)
-    mask_out = where(mask_3d==1, out, self.neg * ones_like(out))
+    mask_out = torch.where(mask_3d==1, out, self.neg * torch.ones_like(out))
     loss = self.loss_func(mask_out.transpose(2, 1), label)
     loss_avg = loss.sum() / mask.sum()
     tensorboard_logs = {'train_loss': loss_avg}
@@ -134,7 +132,7 @@ class KoGPT2Chat(LightningModule):
     data = [item[0] for item in batch]
     mask = [item[1] for item in batch]
     label = [item[2] for item in batch]
-    return LongTensor(data), LongTensor(mask), LongTensor(label)
+    return torch.LongTensor(data), torch.LongTensor(mask), torch.LongTensor(label)
 
   def trian_dataloader(self):
     data = pd.read_csv('Chatbot_data/ChatbotData.csv')
@@ -146,7 +144,7 @@ class KoGPT2Chat(LightningModule):
     self.tok_path
     tok = SentencepieceTokenizer(self.tok_path, num_best=0, alpha=0.1)
     sent_tokens = tok(sent)
-    with no_grad():
+    with torch.no_grad():
       while True:
         q = input('user > ').strip()
         if q == 'quit':
@@ -155,12 +153,12 @@ class KoGPT2Chat(LightningModule):
         a = ''
         a_tok = []
         while True:
-          input_ids = LongTensor([
+          input_ids = torch.LongTensor([
             self.vocab[U_TKN]] + self.vocab[q_tok] +
             self.vocab[EOS, SENT] + self.vocab[sent_tokens] +
             self.vocab[EOS, S_TKN] + self.vocab[a_tok]).unsqueeze(dim=0)
           pred = self(input_ids)
-          gen = self.vocab.to_tokens(argmax(pred, dim=-1).squeeze().numpy().tolist())[-1]
+          gen = self.vocab.to_tokens(torch.argmax(pred, dim=-1).squeeze().numpy().tolist())[-1]
           if gen == EOS:
             break
         a += gen.replace('_', ' ')
