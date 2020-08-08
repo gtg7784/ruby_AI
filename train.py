@@ -12,9 +12,10 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.core.lightning import LightningModule
 from torch.utils.data import DataLoader, Dataset
 from transformers.optimization import AdamW, get_cosine_schedule_with_warmup
-# websocket
-import asyncio
-import websockets
+
+from flask import Flask, request, Response, make_response
+import json
+# web wrapper
 
 parser = argparse.ArgumentParser(description='Ruby based on KoGPT-2')
 
@@ -190,18 +191,11 @@ class KoGPT2Chat(LightningModule):
                                       collate_fn=self._collate_fn)
         return train_dataloader
 
-    def chat(self, sent='0'):
-        start_server = websockets.serve(self.wrapper, "localhost", 8765)
-        print("WebSocket Online!")
-        asyncio.get_event_loop().run_until_complete(start_server)
-        asyncio.get_event_loop().run_forever()
-
-    async def wrapper(self, websocket, path):
+    def chat(self, q, sent='0'):
         self.tok_path
         tok = SentencepieceTokenizer(self.tok_path, num_best=0, alpha=0)
-        sent_tokens = tok('0')
+        sent_tokens = tok(sent)
         with torch.no_grad():
-            q = await websocket.recv()
             q_tok = tok(q)
             a = ''
             a_tok = []
@@ -220,7 +214,7 @@ class KoGPT2Chat(LightningModule):
                     break
                 a += gen.replace('▁', ' ')
                 a_tok = tok(a)
-            await websocket.send(a.strip())
+            return a.strip()
 
 
 parser = KoGPT2Chat.add_model_specific_args(parser)
@@ -249,4 +243,14 @@ if __name__ == "__main__":
             checkpoint_callback.best_model_path))
     if args.chat:
         model = KoGPT2Chat.load_from_checkpoint(args.model_params)
-        model.chat()
+        app = Flask(__name__)
+
+        @app.route('/chat', methods=['POST'])
+        def chat():
+            data = {"msg": model.chat(request.form['sentence'])}
+            r = make_response(data)
+            r.mimetype = 'application/json'
+            return r
+
+        print("The WebServer is online!")
+        app.run(host='0.0.0.0', port=80)
