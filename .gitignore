@@ -1,2 +1,6 @@
 # azure config
 .azureml/
+
+# env
+.env
+!.env.example
