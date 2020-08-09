@@ -143,40 +143,33 @@ class KoGPT2Chat(LightningModule):
     train_dataloader = DataLoader(self.train_set, batch_size=self.hparams.batch_size, num_workers=2, shuffle=True, collate_fn=self._collate_fn)
     return train_dataloader
 
-  def chat(self, sent='0'):
+  def chat(self, q, sent='0'):
     self.tok_path
     tok = SentencepieceTokenizer(self.tok_path, num_best=0, alpha=0)
     sent_tokens = tok(sent)
     with torch.no_grad():
       while True:
-        TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
-        bot = telegram.Bot(token=TELEGRAM_TOKEN)
-        updates = bot.getUpdates()
-        chat_id = updates[-1].message.chat_id
-        updates = bot.getUpdates()
-        for messages in updates:
-          q = messages.message.text
-          if q == 'quit':
+        if q == 'quit':
+          break
+        q_tok = tok(q)
+        a = ''
+        a_tok = []
+        while True:
+          input_ids = torch.LongTensor([
+            self.vocab[U_TKN]] + self.vocab[q_tok] +
+            self.vocab[EOS, SENT] + self.vocab[sent_tokens] +
+            self.vocab[EOS, S_TKN] +
+            self.vocab[a_tok]).unsqueeze(dim=0)
+          pred = self(input_ids)
+          gen = self.vocab.to_tokens(
+            torch.argmax(
+              pred,
+              dim=-1).squeeze().numpy().tolist())[-1]
+          if gen == EOS:
             break
-          q_tok = tok(q)
-          a = ''
-          a_tok = []
-          while True:
-            input_ids = torch.LongTensor([
-              self.vocab[U_TKN]] + self.vocab[q_tok] +
-              self.vocab[EOS, SENT] + self.vocab[sent_tokens] +
-              self.vocab[EOS, S_TKN] +
-              self.vocab[a_tok]).unsqueeze(dim=0)
-            pred = self(input_ids)
-            gen = self.vocab.to_tokens(
-              torch.argmax(
-                pred,
-                dim=-1).squeeze().numpy().tolist())[-1]
-            if gen == EOS:
-              break
-            a += gen.replace('▁', ' ')
-            a_tok = tok(a)
-            bot.sendMessage(chat_id = chat_id, text="{}".format(a.strip()))
+          a += gen.replace('▁', ' ')
+          a_tok = tok(a)
+        return a.strip()
 
 parser = KoGPT2Chat.add_model_specific_args(parser)
 parser = Trainer.add_argparse_args(parser)
@@ -184,6 +177,31 @@ args = parser.parse_args()
 logging.info(args)
 
 if __name__ == "__main__":
+  # if args.train:
+  #   checkpoint_callback = ModelCheckpoint(
+  #     filepath='model_chp/{epoch:02d}-{loss:.2f}',
+  #     verbose=True,
+  #     save_last=True,
+  #     monitor='loss',
+  #     mode='min',
+  #     prefix='model_'
+  #   )
+
+  #   model = KoGPT2Chat(args)
+  #   model.train()
+  #   trainer = Trainer.from_argparse_args(args, checkpoint_callback=checkpoint_callback, gradient_clip_val=1.0)
+  #   trainer.fit(model)
+  #   logging.info('best model path {}'.format(checkpoint_callback.best_model_path))
   # if args.chat:
+
+  TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
+  bot = telegram.Bot(token=TELEGRAM_TOKEN)
+  updates = bot.getUpdates()
+  chat_id = updates[-1].message.chat_id
+  updates = bot.getUpdates()
   model = KoGPT2Chat.load_from_checkpoint(args.model_params)
-  model.chat()
+
+  for messages in updates:
+    response = model.chat(messages.message.text)
+    bot.sendMessage(chat_id = chat_id, text=response)
+  
