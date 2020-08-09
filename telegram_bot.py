@@ -147,14 +147,12 @@ class KoGPT2Chat(LightningModule):
     self.tok_path
     tok = SentencepieceTokenizer(self.tok_path, num_best=0, alpha=0)
     sent_tokens = tok(sent)
-
-    TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
-    bot = telegram.Bot(token=TELEGRAM_TOKEN)
-    updates = bot.getUpdates()
-    chat_id = updates[-1].message.chat_id
-
     with torch.no_grad():
       while True:
+        TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
+        bot = telegram.Bot(token=TELEGRAM_TOKEN)
+        updates = bot.getUpdates()
+        chat_id = updates[-1].message.chat_id
         updates = bot.getUpdates()
         for messages in updates:
           q = messages.message.text
