@@ -1,7 +1,6 @@
 import argparse
 import logging
 import torch
-import telegram
 import os
 import gluonnlp as nlp
 import numpy as np
@@ -15,6 +14,7 @@ from pytorch_lightning.core.lightning import LightningModule
 from torch.utils.data import DataLoader, Dataset
 from transformers.optimization import AdamW, get_cosine_schedule_with_warmup
 from dotenv import load_dotenv
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 
 load_dotenv(verbose=True)
 
@@ -194,14 +194,22 @@ if __name__ == "__main__":
   #   logging.info('best model path {}'.format(checkpoint_callback.best_model_path))
   # if args.chat:
 
-  TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
-  bot = telegram.Bot(token=TELEGRAM_TOKEN)
-  updates = bot.getUpdates()
-  chat_id = updates[-1].message.chat_id
-  updates = bot.getUpdates()
   model = KoGPT2Chat.load_from_checkpoint(args.model_params)
 
-  for messages in updates:
-    response = model.chat(messages.message.text)
-    bot.sendMessage(chat_id = chat_id, text=response)
+  def start(bot, update):
+    bot.send_message(chat_id=update.message.chat_id, text="안녕하세요, 저는 당신의 고민을 들어줄 루비에요.")
   
+  def echo(bot, update):
+    response = model.chat(update.message.text)
+    bot.send_message(chat_id=update.message.chat_id, text=response)
+
+  TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
+  updater = Updater(token=TELEGRAM_TOKEN)
+  dispatcher = updater.dispatcher
+  start_handler = CommandHandler('start', start)
+  dispatcher.add_handler(start_handler)
+  
+  echo_handler = MessageHandler(Filters.text, echo)
+  dispatcher.add_handler(echo_handler)
+
+  updater.start_polling()
