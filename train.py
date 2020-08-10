@@ -13,10 +13,6 @@ from pytorch_lightning.core.lightning import LightningModule
 from torch.utils.data import DataLoader, Dataset
 from transformers.optimization import AdamW, get_cosine_schedule_with_warmup
 
-from flask import Flask, request, Response, make_response
-import json
-# web wrapper
-
 parser = argparse.ArgumentParser(description='Ruby based on KoGPT-2')
 
 parser.add_argument('--chat', action='store_true', default=False)
@@ -239,18 +235,4 @@ if __name__ == "__main__":
             checkpoint_callback=checkpoint_callback,
             gradient_clip_val=1.0)
         trainer.fit(model)
-        logging.info('best model path {}'.format(
-            checkpoint_callback.best_model_path))
-    if args.chat:
-        model = KoGPT2Chat.load_from_checkpoint(args.model_params)
-        app = Flask(__name__)
-
-        @app.route('/chat', methods=['POST'])
-        def chat():
-            data = {"msg": model.chat(request.form['sentence'])}
-            r = make_response(data)
-            r.mimetype = 'application/json'
-            return r
-
-        print("The WebServer is online!")
-        app.run(host='0.0.0.0', port=80)
+        logging.info('best model path {}'.format(checkpoint_callback.best_model_path))
