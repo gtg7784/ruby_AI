@@ -1,4 +1,5 @@
 
+import argparse
 from dotenv import load_dotenv
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 from train import KoGPT2Chat
