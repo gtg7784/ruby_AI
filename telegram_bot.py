@@ -7,7 +7,7 @@ from train import KoGPT2Chat
 load_dotenv(verbose=True)
 
 parser = argparse.ArgumentParser(description='Ruby based on KoGPT-2')
-
+parser.add_argument('--model_params', type=str, default='model_chp/model_last.ckpt')
 args = parser.parse_args()
 
 model = KoGPT2Chat.load_from_checkpoint(args.model_params)
